@@ -2,7 +2,7 @@ use anyhow::Result;
 use yazi_macro::{act, succ};
 use yazi_shared::{data::Data, event::CmdCow};
 
-use crate::input::{Input, InputMode};
+use crate::input::{Input, InputMode, InputOp};
 
 impl Input {
 	pub fn execute(&mut self, cmd: CmdCow) -> Result<Data> {
@@ -19,6 +19,16 @@ impl Input {
 			};
 		}
 
+		macro_rules! on_if {
+			($cond:expr, $name:ident) => {
+				if $cond && cmd.name == stringify!($name) {
+					return act!($name, self, cmd);
+				}
+			};
+		}
+
+		let op = self.snap().op;
+
 		on!(r#move, "move");
 		on!(backward);
 		on!(forward);
@@ -33,11 +43,11 @@ impl Input {
 				on!(yank);
 				on!(paste);
 
-				on!(undo);
+				on_if!(matches!(op, InputOp::None), undo);
 				on!(redo);
 
-				on!(uppercase);
-				on!(lowercase);
+				on_if!(matches!(op, InputOp::Select(_)), lowercase);
+				on_if!(matches!(op, InputOp::Select(_)), uppercase);
 			}
 			InputMode::Insert => {
 				on!(visual);
